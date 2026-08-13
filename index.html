@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIM LINE — 일정 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+<style>
+  :root{
+    --bg-page:#0a0908; --bg-frame:#0d0c09; --surface-1:#17150f; --surface-2:#1f1c14;
+    --border:#2c2818; --border-strong:#463d22; --gold:#c9a227; --gold-bright:#e8c874;
+    --silver:#9c9a8f; --text-primary:#f3ead9; --text-secondary:#a89f89; --text-muted:#6e6650;
+    --danger:#c9645a; --on-accent:#241d08;
+    --radius-card:16px; --font-display:'Noto Serif KR', serif; --font-body:'Noto Sans KR', sans-serif;
+  }
+  /* 밝은 모드: 토스 스타일 블루·화이트 */
+  body.theme-light{
+    --bg-page:#f2f4f6; --bg-frame:#ffffff; --surface-1:#f2f4f6; --surface-2:#e8ebee;
+    --border:#e5e8eb; --border-strong:#d1d6db; --gold:#3182f6; --gold-bright:#3182f6;
+    --silver:#8b95a1; --text-primary:#191f28; --text-secondary:#4e5968; --text-muted:#8b95a1;
+    --danger:#f04452; --on-accent:#ffffff;
+  }
+  body.theme-light .frame{ box-shadow:0 20px 50px rgba(25,31,40,0.12); }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--bg-page); font-family:var(--font-body); color:var(--text-primary); display:flex; justify-content:center; padding:32px 16px; min-height:100vh; }
+  .frame{ width:100%; max-width:400px; background:var(--bg-frame); border:1px solid var(--border-strong); border-radius:28px; overflow:hidden; box-shadow:0 30px 60px rgba(0,0,0,0.5); min-height:600px; position:relative; }
+
+  .header{ padding:26px 22px 18px; display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid var(--border); }
+  .brand{ font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:0.04em; color:var(--gold-bright); }
+  .brand-sub{ font-size:11px; color:var(--text-muted); margin-top:2px; letter-spacing:0.03em; }
+  .header-icon{ width:36px; height:36px; border-radius:50%; border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:center; color:var(--silver); font-size:16px; }
+
+  .content{ padding:18px 22px 90px; }
+
+  .period-tabs{ display:flex; gap:6px; margin-bottom:16px; }
+  .period-tab{ flex:1; text-align:center; font-size:12px; color:var(--text-secondary); padding:7px 0; border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+  .period-tab.active{ color:var(--gold-bright); border-color:var(--gold); background:rgba(201,162,39,0.08); }
+
+  .month-nav{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .month-label{ font-family:var(--font-display); font-size:15px; color:var(--text-primary); font-weight:600; }
+  .month-nav-btn{
+    width:44px; height:40px; border-radius:10px;
+    background:var(--surface-1); border:1px solid var(--border-strong);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-primary); font-size:20px; font-weight:700; cursor:pointer;
+  }
+  .month-nav-btn:active{ background:var(--gold); color:var(--on-accent); }
+
+  .avatar{ width:26px; height:26px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:var(--gold-bright); flex:none; }
+
+  .section-label{ font-size:12px; color:var(--text-muted); letter-spacing:0.04em; margin:20px 0 10px; text-transform:uppercase; }
+
+  .schedule-item{ display:flex; gap:12px; margin-bottom:10px; }
+  .sch-time{ width:48px; flex:none; font-size:12px; color:var(--text-muted); padding-top:12px; }
+  .sch-body{ flex:1; background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+  .sch-title{ font-size:13px; color:var(--text-primary); }
+  .sch-sub{ font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .sch-delete{
+    margin-left:auto; width:28px; height:28px; border-radius:50%;
+    background:var(--surface-2); border:1px solid var(--border-strong);
+    color:var(--text-secondary); font-size:13px; font-weight:700; cursor:pointer; flex:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sch-delete:hover, .sch-delete:active{ background:var(--danger); color:#fff; border-color:var(--danger); }
+  .sch-copy{
+    margin-left:auto; height:28px; padding:0 10px; border-radius:14px;
+    background:var(--surface-2); border:1px solid var(--border-strong);
+    color:var(--text-secondary); font-size:11px; font-weight:600; cursor:pointer; flex:none;
+    display:flex; align-items:center; justify-content:center; white-space:nowrap;
+  }
+  .sch-copy:hover, .sch-copy:active{ background:var(--gold); color:var(--on-accent); border-color:var(--gold); }
+  .card-actions{ display:flex; gap:6px; align-items:center; margin-left:auto; flex:none; }
+  .card-actions .sch-delete, .card-actions .sch-copy, .card-actions .sch-star{ margin-left:0; }
+  .sch-star{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    background:var(--surface-2); border:1px solid var(--border-strong);
+    color:var(--text-muted); font-size:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .sch-star.starred{ background:rgba(201,162,39,0.12); border-color:var(--gold); color:var(--gold-bright); }
+
+  .week-grid{ display:flex; gap:5px; }
+  .week-col{ flex:1; min-width:0; cursor:pointer; border-radius:8px; padding:2px; transition:background .15s; }
+  .week-col:hover{ background:var(--surface-1); }
+  .week-col-head{ text-align:center; font-size:10px; color:var(--text-muted); margin-bottom:6px; }
+  .week-col-head.today{ color:var(--gold-bright); font-weight:600; }
+  .week-chip{ background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:5px 4px; font-size:9px; color:var(--text-secondary); margin-bottom:4px; text-align:center; line-height:1.3; }
+  .week-chip.gold{ border-color:var(--border-strong); background:rgba(201,162,39,0.10); color:var(--gold-bright); }
+
+  .month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .month-dow{ text-align:center; font-size:10px; color:var(--text-muted); padding-bottom:8px; }
+  .month-cell{
+    min-height:64px; display:flex; flex-direction:column; align-items:flex-start;
+    padding:4px 3px; border-radius:8px; cursor:pointer; border:1px solid transparent;
+  }
+  .month-cell.blank{ visibility:hidden; cursor:default; }
+  .month-cell.selected{ border-color:var(--border-strong); background:var(--surface-1); }
+  .month-cell-num{
+    width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:var(--text-secondary); margin-bottom:3px; flex:none;
+  }
+  .month-cell.today .month-cell-num{ background:var(--text-primary); color:var(--bg-frame); font-weight:700; }
+  .month-cell-event{
+    font-size:9px; color:var(--text-secondary); background:var(--surface-1);
+    border-left:2px solid var(--gold); border-radius:3px; padding:2px 4px; margin-bottom:2px;
+    width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .month-cell-more{ font-size:9px; color:var(--text-muted); }
+
+  /* ---- 모달 안 미니 날짜 선택기 (컴팩트, 별도 스타일) ---- */
+  .picker-cell{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:11px; color:var(--text-secondary); position:relative; cursor:pointer; }
+  .picker-cell.blank{ visibility:hidden; cursor:default; }
+  .picker-cell.today{ background:var(--gold); color:var(--on-accent); font-weight:600; }
+  .picker-cell.picked{ box-shadow:0 0 0 1.5px var(--gold) inset; color:var(--gold-bright); }
+  .picker-cell .dot{ position:absolute; bottom:4px; width:4px; height:4px; border-radius:50%; background:var(--gold-bright); }
+  .picker-cell.today .dot{ background:var(--on-accent); }
+
+  .year-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .year-month{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; cursor:pointer; }
+  .year-month-label{ font-size:11px; color:var(--text-secondary); margin-bottom:8px; }
+  .year-month.current .year-month-label{ color:var(--gold-bright); font-weight:600; }
+  .year-bar-track{ height:4px; background:var(--surface-2); border-radius:3px; overflow:hidden; }
+  .year-bar-fill{ height:100%; background:var(--gold); border-radius:3px; }
+  .year-month-count{ font-size:9px; color:var(--text-muted); margin-top:6px; }
+
+  /* ---- FAB + 모달 + 토스트 ---- */
+  .fab{
+    position:absolute; right:22px; bottom:76px; height:40px; padding:0 16px; border-radius:10px;
+    background:var(--gold); color:var(--on-accent); border:none; font-size:12px; font-weight:600; cursor:pointer;
+    box-shadow:0 8px 20px rgba(0,0,0,0.4); display:flex; align-items:center; gap:5px; z-index:20;
+  }
+  .fab i{ font-size:14px; }
+
+  /* ---- 하단 탭바 (일정 / 메모) ---- */
+  .bottom-tabbar{ position:absolute; left:0; right:0; bottom:0; display:flex; border-top:1px solid var(--border); background:var(--bg-frame); z-index:15; }
+  .bottom-tab{ flex:1; text-align:center; padding:12px 0 10px; font-size:12px; color:var(--text-muted); cursor:pointer; }
+  .bottom-tab.active{ color:var(--gold-bright); font-weight:600; }
+
+  /* ---- 메모 카드 ---- */
+  .memo-card{ background:var(--surface-1); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+  .memo-card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .memo-card-title{ font-size:14px; font-weight:600; color:var(--text-primary); }
+  .memo-card-content{ font-size:12px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap; margin-top:6px; }
+  .memo-card-date{ font-size:10px; color:var(--text-muted); margin-top:10px; }
+  .memo-all-toggle{ font-size:12px; color:var(--gold-bright); border:1px solid var(--border-strong); border-radius:20px; padding:7px 14px; cursor:pointer; background:rgba(201,162,39,0.08); }
+  .memo-date-badge{ font-size:10px; color:var(--gold-bright); background:var(--surface-2); border-radius:6px; padding:3px 8px; display:inline-block; margin-bottom:8px; }
+  .modal-overlay{ position:absolute; inset:0; background:rgba(5,4,2,0.72); display:none; align-items:flex-end; z-index:30; }
+  .modal-overlay.open{ display:flex; }
+  .modal-sheet{ width:100%; max-height:88%; overflow-y:auto; background:var(--bg-frame); border-top:1px solid var(--border-strong); border-radius:20px 20px 0 0; padding:22px; }
+  .modal-title{ font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--gold-bright); margin-bottom:16px; }
+  .modal-label{ font-size:11px; color:var(--text-muted); margin:14px 0 6px; }
+  .modal-input{ width:100%; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:12px 13px; font-size:13px; color:var(--text-primary); font-family:var(--font-body); }
+
+  .picker-box{ background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:12px; }
+  .picker-summary{ font-size:13px; color:var(--gold-bright); font-weight:600; text-align:center; margin-bottom:10px; }
+
+  .time-selects{ display:flex; gap:8px; }
+  .time-select{ flex:1; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:11px 8px; font-size:13px; color:var(--text-primary); font-family:var(--font-body); text-align:center; }
+
+  .modal-actions{ display:flex; flex-direction:column; gap:10px; margin-top:22px; }
+  .modal-btn{ padding:16px; border-radius:12px; font-size:14px; cursor:pointer; text-align:center; }
+  .modal-btn.confirm{ background:var(--gold); border:none; color:var(--on-accent); font-weight:700; font-size:15px; padding:18px; }
+  .modal-btn.cancel{ background:none; border:none; color:var(--text-muted); font-size:12px; padding:4px; }
+
+  .toast{
+    position:absolute; left:50%; bottom:100px; transform:translateX(-50%) translateY(10px);
+    background:var(--surface-2); border:1px solid var(--border-strong); color:var(--text-primary);
+    font-size:12px; padding:11px 18px; border-radius:20px; opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s; z-index:40; white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .landing-screen{ padding:40px 24px; text-align:center; min-height:600px; display:flex; flex-direction:column; justify-content:center; }
+  .landing-footer{ margin-top:auto; padding-top:40px; font-size:11px; color:var(--text-muted); line-height:1.8; }
+  .landing-footer-links{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px; }
+  .landing-footer-links span.sep{ color:var(--border-strong); }
+  .landing-logo{ font-family:var(--font-display); font-size:40px; color:var(--gold-bright); font-weight:700; letter-spacing:0.04em; margin-bottom:14px; }
+  .landing-tagline{ font-size:16px; color:var(--text-secondary); margin-bottom:44px; line-height:1.5; }
+  .landing-choice-btn{ display:flex; align-items:center; width:100%; text-align:left; background:var(--surface-1); border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:16px; cursor:pointer; }
+  .landing-choice-title{ font-size:19px; color:var(--text-primary); font-weight:600; }
+  .landing-choice-sub{ font-size:14px; color:var(--text-muted); margin-top:5px; }
+</style>
+</head>
+<body class="theme-light">
+
+<div class="frame">
+
+  <div class="toast" id="toast"></div>
+
+  <!-- ================= 첫 화면: 카카오 로그인 → 개인/회사 선택 ================= -->
+  <div class="landing-screen" id="landingScreen">
+    <div class="landing-logo">KIM LINE</div>
+    <div class="landing-tagline">개인과 회사 일정을 한 곳에서 관리하세요</div>
+
+    <!-- STEP 1: 카카오 로그인 -->
+    <div id="authStep">
+      <div class="landing-choice-btn" id="kakaoLoginBtn" onclick="kakaoLogin()" style="justify-content:center; text-align:center; background:#FEE500; border-color:#FEE500; margin-bottom:10px;">
+        <div class="landing-choice-title" style="color:#181600;">💬 카카오로 로그인</div>
+      </div>
+      <div id="authLoadingMsg" style="display:none; text-align:center; font-size:12px; color:var(--text-muted); margin-top:8px;">로그인 확인 중...</div>
+    </div>
+
+    <!-- STEP 2: 인증 완료 후 — 개인/회사 선택 -->
+    <div id="scopeStep" style="display:none;">
+      <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"><span id="scopeStepName" style="color:var(--text-primary); font-weight:600;"></span>님, 어떤 일정을 관리하시겠어요?</div>
+      <div class="landing-choice-btn" onclick="chooseScope('personal')">
+        <div><div class="landing-choice-title">개인 일정</div><div class="landing-choice-sub">본인 개인 일정 관리</div></div>
+      </div>
+      <div class="landing-choice-btn" onclick="chooseScope('company')">
+        <div><div class="landing-choice-title">회사 일정</div><div class="landing-choice-sub">팀·회사 전체 일정 관리</div></div>
+      </div>
+      <div style="text-align:center; font-size:12px; color:var(--text-muted); cursor:pointer; text-decoration:underline; margin-top:6px;" onclick="kakaoLogout()">다른 계정으로 로그인</div>
+    </div>
+
+    <div class="landing-footer">
+      <div class="landing-footer-links">
+        <span onclick="openPolicyModal('privacy')" style="cursor:pointer; text-decoration:underline;">개인정보처리방침</span><span class="sep">·</span><span onclick="openPolicyModal('terms')" style="cursor:pointer; text-decoration:underline;">이용약관</span><span class="sep">·</span><span>📧 a123dlsgh@gmail.com</span>
+      </div>
+      <div>© 2026 KIM LINE. All rights reserved.</div>
+    </div>
+  </div>
+
+  <div id="appScreen" style="display:none;">
+  <div class="header">
+    <div>
+      <div class="brand">KIM LINE</div>
+      <div class="brand-sub" id="headerSub">시범 서비스 · 일정 관리</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <div class="header-icon" onclick="goToToday()" aria-label="오늘로 이동" style="color:var(--text-primary); font-size:11px; font-weight:700;">오늘</div>
+      <div class="header-icon" onclick="toggleTheme()" id="themeToggleBtn"><i class="ti ti-sun"></i></div>
+      <div class="header-icon" onclick="goToLanding()" aria-label="뒤로가기" style="color:var(--text-primary); font-size:18px; font-weight:700;">←</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="period-tabs" id="periodTabsRow">
+      <div class="period-tab active" data-period="day" onclick="switchPeriod('day')">일</div>
+      <div class="period-tab" data-period="week" onclick="switchPeriod('week')">주</div>
+      <div class="period-tab" data-period="month" onclick="switchPeriod('month')">월</div>
+      <div class="period-tab" data-period="year" onclick="switchPeriod('year')">년</div>
+    </div>
+
+    <div class="month-nav" id="periodNav">
+      <div class="month-nav-btn" onclick="shiftPeriod(-1)" aria-label="이전">←</div>
+      <div class="month-label" id="periodLabel">2026년 8월</div>
+      <div class="month-nav-btn" onclick="shiftPeriod(1)" aria-label="다음">→</div>
+    </div>
+
+    <div id="scheduleView">
+      <div id="periodContent"></div>
+    </div>
+
+    <div id="memoView" style="display:none;">
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px;">
+        <div class="memo-all-toggle" id="memoCopyAllBtn" onclick="copyAllMemosText()" style="display:none;">전체 메모 복사</div>
+        <div class="memo-all-toggle" id="memoAllToggle" onclick="toggleMemoAllView()">전체 메모 보기</div>
+      </div>
+      <div id="memoContent"></div>
+    </div>
+
+    <div id="archiveView" style="display:none;">
+      <div id="archiveContent"></div>
+    </div>
+  </div>
+
+  <div class="bottom-tabbar">
+    <div class="bottom-tab active" id="mainTab-schedule" onclick="switchMainTab('schedule')">일정</div>
+    <div class="bottom-tab" id="mainTab-memo" onclick="switchMainTab('memo')">메모</div>
+    <div class="bottom-tab" id="mainTab-archive" onclick="switchMainTab('archive')">보관함</div>
+  </div>
+
+  <button class="fab" id="fabBtn" onclick="handleFabClick()"><i class="ti ti-plus"></i> 등록</button>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-sheet">
+      <div class="modal-title">일정 추가</div>
+
+      <div class="modal-label">제목</div>
+      <input class="modal-input" id="modalTitle" placeholder="예: 파트너사 미팅">
+
+      <div class="modal-label">날짜</div>
+      <div class="picker-box">
+        <div class="picker-summary" id="pickDateSummary">-</div>
+        <div class="month-nav" style="margin-bottom:8px;">
+          <div class="month-nav-btn" onclick="shiftPickerMonth(-1)" aria-label="이전 달">←</div>
+          <div class="month-label" id="pickerMonthLabel" style="font-size:13px;">-</div>
+          <div class="month-nav-btn" onclick="shiftPickerMonth(1)" aria-label="다음 달">→</div>
+        </div>
+        <div class="month-grid" id="pickerCalendar"></div>
+      </div>
+
+      <div class="modal-label">시간</div>
+      <div class="time-selects">
+        <select class="time-select" id="pickAmPm"><option>오전</option><option>오후</option></select>
+        <select class="time-select" id="pickHour"></select>
+        <select class="time-select" id="pickMinute"></select>
+      </div>
+
+      <div class="modal-label">메모 <span style="color:var(--text-muted); font-weight:400;">(입력하면 메모 탭에도 자동으로 등록돼요)</span></div>
+      <input class="modal-input" id="modalMemo" placeholder="예: 강남 사무실">
+
+      <div class="modal-actions">
+        <div class="modal-btn confirm" onclick="submitEvent()">일정 등록</div>
+        <div class="modal-btn cancel" onclick="closeModal()">취소</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="memoModalOverlay">
+    <div class="modal-sheet">
+      <div class="modal-title" id="memoModalTitle">메모 추가</div>
+
+      <div class="modal-label">제목</div>
+      <input class="modal-input" id="memoTitleInput" placeholder="예: 준비물 목록">
+
+      <div class="modal-label">내용</div>
+      <textarea class="modal-input" id="memoContentInput" rows="5" placeholder="메모 내용을 입력하세요" style="resize:none; font-family:var(--font-body);"></textarea>
+
+      <div class="modal-actions">
+        <div class="modal-btn confirm" onclick="submitMemo()">메모 저장</div>
+        <div class="modal-btn cancel" onclick="closeMemoModal()">취소</div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <div class="modal-overlay" id="policyModalOverlay">
+    <div class="modal-sheet" style="text-align:left;">
+      <div class="modal-title" id="policyModalTitle">개인정보처리방침</div>
+      <div id="policyModalBody" style="font-size:12.5px; line-height:1.75; color:var(--text-secondary); white-space:pre-line;"></div>
+      <div class="modal-actions">
+        <div class="modal-btn confirm" onclick="closePolicyModal()">확인</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const PRIVACY_POLICY_TEXT = `시행일: 2026년 8월 13일 | 최근 개정일: 2026년 8월 13일 (로그인 방식 변경 반영)
+
+KIM LINE(이하 '서비스')은 이용자의 개인정보를 소중히 여기며, 아래와 같이 개인정보를 처리합니다. 본 서비스는 현재 베타(테스트) 단계로 운영되고 있습니다.
+
+1. 수집하는 개인정보 항목
+서비스는 이용 시 입력하신 '이름 또는 닉네임', 서비스가 자동으로 발급하는 보안 코드, 그리고 직접 등록하신 일정·메모 내용을 다룹니다. 이메일, 전화번호, 위치정보 등 그 외의 개인정보는 수집하지 않습니다.
+
+2. 개인정보 저장 방식 및 위치
+입력하신 모든 데이터(이름, 보안 코드, 일정, 메모)는 외부 서버로 전송되거나 저장되지 않고, 이용 중인 기기(브라우저)의 로컬 저장소(localStorage)에만 저장됩니다. 즉, 운영자를 포함한 그 누구도 이용자의 데이터에 원격으로 접근할 수 없으며, 데이터는 오직 이용자의 기기 안에만 존재합니다.
+
+3. 보안 코드 발급 및 운영자의 접근 범위
+서비스는 이름 도용이나 무단 삭제를 방지하기 위해, 처음 사용하는 이름마다 무작위 보안 코드를 발급합니다. 이 코드는 이용자의 기기에만 저장되며, 서버로 전송되지 않습니다. 다만 운영자는 자신이 직접 사용하는 기기 안에서, 그 기기를 통해 발급된 코드에 한해 별도로 마련된 관리자 전용 화면에서 확인할 수 있습니다 (다른 이용자의 기기에서 발급된 코드는 운영자도 확인할 수 없습니다). 이 기록은 부정 이용 방지 및 서비스 점검 목적으로만 사용되며, 제3자에게 제공되지 않습니다.
+
+4. 개인정보의 보유 및 이용 기간
+데이터는 이용자가 직접 삭제하거나, 브라우저의 저장 데이터(캐시/사이트 데이터)를 삭제하거나, 다른 기기·브라우저로 접속하기 전까지 계속 보관됩니다. 서비스는 별도의 서버 백업을 제공하지 않으므로, 브라우저 데이터가 삭제되면 입력하신 이름·보안 코드·일정·메모가 함께 삭제되며 복구가 불가능합니다. 보안 코드를 분실한 경우도 마찬가지로 해당 이름으로는 복구가 불가능합니다.
+
+5. 개인정보의 제3자 제공
+서비스는 어떠한 개인정보도 제3자에게 제공하거나 판매하지 않습니다. 광고 목적의 데이터 활용도 하지 않습니다.
+
+6. 쿠키 등 자동 수집 장치
+서비스는 별도의 추적 쿠키나 광고식별자를 사용하지 않습니다. 위에서 설명한 localStorage는 이용자의 이름·보안 코드·일정·메모 데이터를 기기에 보관하기 위한 용도로만 사용됩니다.
+
+7. 만 14세 미만 이용자
+서비스는 현재 별도의 연령 확인 절차를 두고 있지 않습니다. 만 14세 미만 아동이 서비스를 이용하는 경우, 법정대리인(보호자)의 동의가 필요할 수 있습니다.
+
+8. 이용자의 권리
+이용자는 언제든지 앱 내에서 본인이 입력한 일정·메모를 직접 삭제할 수 있으며, 브라우저 설정에서 사이트 데이터를 삭제하면 저장된 모든 정보(이름, 보안 코드 포함)가 즉시 삭제됩니다.
+
+9. 향후 변경 사항 안내
+추후 소셜 로그인 기능이나 서버 기반 저장(클라우드 동기화) 기능이 추가될 경우, 수집 항목과 처리 방침이 변경될 수 있으며 이 경우 사전에 서비스 내 공지를 통해 안내드립니다.
+
+10. 문의처
+개인정보 관련 문의는 아래 이메일로 연락해 주세요.
+📧 a123dlsgh@gmail.com`;
+
+  const TERMS_OF_SERVICE_TEXT = `시행일: 2026년 8월 13일
+
+제1조 (목적)
+본 약관은 KIM LINE(이하 '서비스')이 제공하는 일정·메모 관리 서비스의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임사항을 정함을 목적으로 합니다.
+
+제2조 (서비스의 내용 및 현재 상태)
+서비스는 개인 또는 팀·회사 단위로 일정과 메모를 등록·관리할 수 있는 기능을 제공합니다. 본 서비스는 현재 베타(테스트) 버전으로, 정식 서비스가 아니며 기능 및 화면 구성이 사전 고지 없이 변경되거나 서비스가 중단될 수 있습니다.
+
+제3조 (데이터 저장의 한계 및 이용자 책임)
+서비스는 이름과 서비스가 발급하는 보안 코드로 이용할 수 있습니다. 모든 데이터(이름, 보안 코드, 일정, 메모)는 이용자의 기기(브라우저) 내부에만 저장되며 서버에 백업되지 않습니다. 따라서 다음의 경우 데이터가 유실될 수 있고, 서비스는 이에 대해 책임을 지지 않습니다.
+ - 브라우저 캐시/사이트 데이터를 삭제한 경우
+ - 다른 기기 또는 다른 브라우저로 접속한 경우
+ - 발급받은 보안 코드를 분실한 경우 (서버가 없어 코드 재발급·복구가 불가능하며, 이 경우 새로운 이름으로 다시 시작해야 합니다)
+이용자는 발급받은 보안 코드를 안전한 곳에 별도로 보관하고, 중요한 일정·메모는 별도로 백업해 두는 것을 권장합니다.
+
+제4조 (이용자의 의무)
+이용자는 실제 본인을 나타내는 이름 또는 식별 가능한 닉네임을 사용하는 것을 권장하며, 타인을 사칭하거나 서비스를 부정한 목적으로 이용해서는 안 됩니다. 회사 일정 기능을 이용하는 경우, 등록하는 일정 정보에 대한 관리 책임은 등록한 이용자 본인에게 있습니다.
+
+제5조 (서비스 제공의 중단)
+서비스는 베타 버전 운영 특성상 사전 고지 없이 일시적으로 또는 영구적으로 중단될 수 있습니다. 서비스 중단으로 인한 데이터 유실에 대해 서비스는 별도의 보상 책임을 지지 않습니다.
+
+제6조 (면책조항)
+서비스는 무료로 제공되는 베타 서비스로서, 관련 법령에서 특별히 규정한 경우를 제외하고 서비스 이용과 관련하여 발생한 이용자의 손해에 대해 책임을 지지 않습니다.
+
+제7조 (약관의 변경)
+본 약관은 서비스 개선 및 정책 변경에 따라 수정될 수 있으며, 변경 시 서비스 내 공지를 통해 안내합니다.
+
+제8조 (문의처)
+서비스 이용 관련 문의는 아래 이메일로 연락해 주세요.
+📧 a123dlsgh@gmail.com`;
+
+  function openPolicyModal(type){
+    document.getElementById('policyModalTitle').textContent = type === 'privacy' ? '개인정보처리방침' : '이용약관';
+    document.getElementById('policyModalBody').textContent = type === 'privacy' ? PRIVACY_POLICY_TEXT : TERMS_OF_SERVICE_TEXT;
+    document.getElementById('policyModalOverlay').classList.add('open');
+  }
+  function closePolicyModal(){
+    document.getElementById('policyModalOverlay').classList.remove('open');
+  }
+
+  // 대한민국(서울) 시간 기준 오늘 날짜를 자동으로 계산 — 접속 기기의 시간대와 상관없이 항상 한국 기준
+  function getKoreaToday(){
+    const kstString = new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
+    const kst = new Date(kstString);
+    return new Date(kst.getFullYear(), kst.getMonth(), kst.getDate());
+  }
+  const today = getKoreaToday();
+  let currentScope = 'personal';
+  let currentPeriod = 'day';
+  let viewDate = new Date(today);
+  const weekLabels = ["일","월","화","수","목","금","토"];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function startOfWeek(d){ const r = new Date(d); r.setDate(r.getDate() - r.getDay()); return r; }
+  function escapeAttr(str){
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ---- 일정 데이터 (개인 / 회사 분리) ----
+  function emptyEventsData(){
+    return { personal:{}, company:{} };
+  }
+  let eventsData = emptyEventsData();
+
+  function emptyMemosData(){
+    return { personal:{}, company:{} };
+  }
+  let memosData = emptyMemosData();
+
+  // ---- 다크/라이트 테마 ----
+  function toggleTheme(){
+    const isLight = document.body.classList.toggle('theme-light');
+    document.getElementById('themeToggleBtn').innerHTML = isLight ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+    try{ localStorage.setItem('kimline_theme', isLight ? 'light' : 'dark'); }catch(e){}
+  }
+  function applyStoredTheme(){
+    try{
+      if(localStorage.getItem('kimline_theme') === 'dark'){
+        document.body.classList.remove('theme-light');
+        document.getElementById('themeToggleBtn').innerHTML = '<i class="ti ti-moon"></i>';
+      }
+      // 기본값(저장된 게 없거나 'light')은 이미 HTML에서 밝은 모드로 시작하므로 별도 처리 불필요
+    }catch(e){}
+  }
+  let currentUser = ''; // 카카오 닉네임 (화면 표시용)
+  let supabaseUserId = null; // Supabase 세션의 실제 사용자 id (모든 쿼리는 이걸로 구분됨)
+  let pendingScope = null; // 로그인 완료 후, 사용자가 개인/회사 고르기 전까지 잠깐 대기
+
+  // ---- Supabase 클라이언트 초기화 ----
+  const SUPABASE_URL = 'https://cpkauaszigxqohwtyskf.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_ZMEMgBwaanUJJtyKJTQ7oA_jEYicrIi';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // 카카오 JS SDK 초기화 — REST API 방식(signInWithOAuth) 대신 이걸 쓰는 이유:
+  // Supabase의 signInWithOAuth는 카카오에 account_email까지 기본으로 요청하는데, 이건 카카오 '비즈 앱'(사업자 인증)이 아니면
+  // 절대 승인이 안 나서 KOE205 에러가 계속 남. JS SDK로 직접 로그인하면 닉네임만 요청할 수 있어서 이 문제를 피할 수 있음.
+  Kakao.init('ed3f0e3d96091d50039119fa6dcfe6e1');
+
+  function kakaoLogin(){
+    document.getElementById('authLoadingMsg').style.display = 'block';
+    document.getElementById('authLoadingMsg').textContent = '카카오로 로그인 중...';
+    Kakao.Auth.login({
+      scope: 'openid profile_nickname',
+      success: function(authObj){
+        console.log('Kakao authObj:', authObj);
+        if(!authObj.id_token){
+          document.getElementById('authLoadingMsg').textContent = '진단용: ' + JSON.stringify(authObj);
+          return;
+        }
+        supabaseClient.auth.signInWithIdToken({
+          provider: 'kakao',
+          token: authObj.id_token
+        }).then(({ error }) => {
+          if(error){
+            document.getElementById('authLoadingMsg').textContent = '로그인 실패: ' + error.message;
+          }
+          // 성공 시에는 아래 onAuthStateChange 리스너가 자동으로 화면을 다음 단계로 넘겨줌
+        });
+      },
+      fail: function(err){
+        document.getElementById('authLoadingMsg').style.display = 'block';
+        document.getElementById('authLoadingMsg').textContent = '카카오 로그인 실패: ' + (err && (err.error_description || err.error || JSON.stringify(err)));
+        console.error('Kakao login fail:', err);
+      }
+    });
+  }
+
+  async function kakaoLogout(){
+    await supabaseClient.auth.signOut();
+    supabaseUserId = null;
+    currentUser = '';
+    document.getElementById('appScreen').style.display = 'none';
+    document.getElementById('landingScreen').style.display = 'block';
+    document.getElementById('authStep').style.display = 'block';
+    document.getElementById('scopeStep').style.display = 'none';
+  }
+
+  // 카카오 계정의 user_metadata에서 표시할 이름을 최대한 찾아내기 (필드명이 케이스마다 다를 수 있어 여러 후보를 시도)
+  function extractDisplayName(user){
+    const m = user.user_metadata || {};
+    return m.name || m.nickname || m.full_name || m.preferred_username || m.user_name || user.email || '사용자';
+  }
+
+  function handleAuthSession(session){
+    document.getElementById('authLoadingMsg').style.display = 'none';
+    if(!session){
+      document.getElementById('authStep').style.display = 'block';
+      document.getElementById('scopeStep').style.display = 'none';
+      return;
+    }
+    supabaseUserId = session.user.id;
+    currentUser = extractDisplayName(session.user);
+    document.getElementById('authStep').style.display = 'none';
+    document.getElementById('scopeStep').style.display = 'block';
+    document.getElementById('scopeStepName').textContent = currentUser;
+  }
+
+  // 페이지가 로드될 때(또는 카카오에서 돌아왔을 때) 로그인 상태를 자동으로 감지
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    handleAuthSession(session);
+  });
+  supabaseClient.auth.getSession().then(({ data }) => handleAuthSession(data.session));
+
+  async function chooseScope(scope){
+    if(!supabaseUserId) return;
+    await enterApp(scope);
+  }
+
+  async function enterApp(scope){
+    currentScope = scope;
+    eventsData = emptyEventsData(); // 이전에 화면에 떠 있던 다른 스코프의 데이터가 남지 않도록 완전히 초기화
+    memosData = emptyMemosData();
+    document.getElementById('landingScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'block';
+    document.getElementById('headerSub').textContent = `${currentUser}님 · ${scope === 'personal' ? '개인 일정' : '회사 일정'} 관리 중 · 불러오는 중...`;
+    await loadFromSupabase(scope);
+    document.getElementById('headerSub').textContent = `${currentUser}님 · ${scope === 'personal' ? '개인 일정' : '회사 일정'} 관리 중`;
+    render();
+  }
+
+  function goToLanding(){
+    kakaoLogout();
+  }
+
+  // ---- Supabase 데이터 불러오기 ----
+  async function loadFromSupabase(scope){
+    try{
+      const { data: evRows, error: evErr } = await supabaseClient
+        .from('events').select('*').eq('scope', scope);
+      if(evErr) throw evErr;
+      (evRows || []).forEach(r => {
+        const key = r.event_date;
+        if(!eventsData[scope][key]) eventsData[scope][key] = [];
+        eventsData[scope][key].push({ id: r.id, time: r.event_time, title: r.title, sub: r.sub || '메모 없음', starred: !!r.starred });
+      });
+      Object.keys(eventsData[scope]).forEach(key => {
+        eventsData[scope][key].sort((a,b) => a.time.localeCompare(b.time));
+      });
+
+      const { data: moRows, error: moErr } = await supabaseClient
+        .from('memos').select('*').eq('scope', scope).order('created_at', { ascending: false });
+      if(moErr) throw moErr;
+      (moRows || []).forEach(r => {
+        const key = r.event_date;
+        if(!memosData[scope][key]) memosData[scope][key] = [];
+        memosData[scope][key].push({ id: r.id, title: r.title, content: r.content || '', starred: !!r.starred });
+      });
+    }catch(e){
+      showToast('데이터를 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
+    }
+  }
+
+  // ---- 토스트 ----
+  let toastTimer;
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ---- 일정/메모 복사 (공유 시트 없이, 텍스트를 바로 클립보드에 복사) ----
+  function fallbackCopyText(text){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('복사되었습니다');
+    }catch(e){
+      showToast('복사에 실패했어요');
+    }
+  }
+
+  function copyTextToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(() => showToast('복사되었습니다')).catch(() => fallbackCopyText(text));
+      return;
+    }
+    fallbackCopyText(text);
+  }
+
+  function copyEventText(key, idx){
+    const item = (eventsData[currentScope][key] || [])[idx];
+    if(!item) return;
+    const [y,m,d] = key.split('-');
+    let text = `[일정] ${item.title}\n${y}.${m}.${d} ${item.time}`;
+    if(item.sub && item.sub !== '메모 없음') text += `\n${item.sub}`;
+    copyTextToClipboard(text);
+  }
+
+  function copyMemoText(key, id){
+    const list = memosData[currentScope][key];
+    const m = list && list.find(mm => mm.id === id);
+    if(!m) return;
+    const [y,mo,d] = key.split('-');
+    let text = `[메모] ${m.title}\n${y}.${mo}.${d}`;
+    if(m.content) text += `\n${m.content}`;
+    copyTextToClipboard(text);
+  }
+
+  // ---- 일정 추가 모달 (네이버 캘린더 스타일 날짜/시간 선택) ----
+  let pickerDate = new Date(); // 모달 안 달력에서 현재 보고 있는 월
+  let selectedDate = new Date(); // 실제 선택된 날짜
+
+  function buildTimeSelectOptions(){
+    const hourSel = document.getElementById('pickHour');
+    const minSel = document.getElementById('pickMinute');
+    hourSel.innerHTML = Array.from({length:12}, (_,i) => i+1).map(h => `<option value="${h}">${h}시</option>`).join('');
+    minSel.innerHTML = ['00','10','20','30','40','50'].map(m => `<option value="${m}">${m}분</option>`).join('');
+  }
+
+  function renderPickerCalendar(){
+    const y = pickerDate.getFullYear(), m = pickerDate.getMonth();
+    document.getElementById('pickerMonthLabel').textContent = `${y}년 ${m+1}월`;
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    let html = '';
+    weekLabels.forEach(l => html += `<div class="month-dow">${l}</div>`);
+    for(let i=0;i<firstDow;i++) html += `<div class="picker-cell blank">·</div>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const cellDate = new Date(y, m, d);
+      const isToday = dateKey(cellDate) === dateKey(today);
+      const isPicked = dateKey(cellDate) === dateKey(selectedDate);
+      const hasEvent = !!(eventsData[currentScope][dateKey(cellDate)] && eventsData[currentScope][dateKey(cellDate)].length);
+      html += `<div class="picker-cell ${isToday ? 'today' : ''} ${isPicked ? 'picked' : ''}" onclick="pickDate(${y},${m},${d})">${d}${hasEvent ? '<div class="dot"></div>' : ''}</div>`;
+    }
+    document.getElementById('pickerCalendar').innerHTML = html;
+    document.getElementById('pickDateSummary').textContent = `${selectedDate.getFullYear()}년 ${selectedDate.getMonth()+1}월 ${selectedDate.getDate()}일 (${weekLabels[selectedDate.getDay()]})`;
+  }
+
+  function shiftPickerMonth(dir){
+    pickerDate.setMonth(pickerDate.getMonth() + dir);
+    renderPickerCalendar();
+  }
+
+  function pickDate(y,m,d){
+    selectedDate = new Date(y,m,d);
+    renderPickerCalendar();
+  }
+
+  function openModal(){
+    selectedDate = new Date(viewDate);
+    pickerDate = new Date(viewDate);
+    document.getElementById('modalTitle').value = '';
+    document.getElementById('modalMemo').value = '';
+    buildTimeSelectOptions();
+    document.getElementById('pickAmPm').value = '오전';
+    document.getElementById('pickHour').value = '9';
+    document.getElementById('pickMinute').value = '00';
+    renderPickerCalendar();
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+  function closeModal(){
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  async function submitEvent(){
+    const title = document.getElementById('modalTitle').value.trim();
+    const memo = document.getElementById('modalMemo').value.trim();
+    const ampm = document.getElementById('pickAmPm').value;
+    let hour = parseInt(document.getElementById('pickHour').value, 10);
+    const minute = document.getElementById('pickMinute').value;
+    if(!title){ showToast('제목을 입력해주세요'); return; }
+    if(ampm === '오후' && hour !== 12) hour += 12;
+    if(ampm === '오전' && hour === 12) hour = 0;
+    const timeStr = `${pad(hour)}:${minute}`;
+    const key = dateKey(selectedDate);
+
+    const { data: evData, error: evErr } = await supabaseClient.from('events').insert({
+      user_id: supabaseUserId, scope: currentScope, event_date: key, event_time: timeStr, title, sub: memo || '메모 없음', starred: false
+    }).select().single();
+    if(evErr){ showToast('일정 저장에 실패했어요'); return; }
+
+    if(!eventsData[currentScope][key]) eventsData[currentScope][key] = [];
+    eventsData[currentScope][key].push({ id: evData.id, time: timeStr, title, sub: memo || '메모 없음', starred: false });
+    eventsData[currentScope][key].sort((a,b) => a.time.localeCompare(b.time));
+
+    // 일정 등록 시 '메모' 칸에 뭔가 적었다면, 메모 탭에서도 진짜로 보이도록 메모 데이터에도 함께 저장
+    if(memo){
+      const { data: moData, error: moErr } = await supabaseClient.from('memos').insert({
+        user_id: supabaseUserId, scope: currentScope, event_date: key, title, content: memo, starred: false
+      }).select().single();
+      if(!moErr){
+        if(!memosData[currentScope][key]) memosData[currentScope][key] = [];
+        memosData[currentScope][key].unshift({ id: moData.id, title, content: memo, starred: false });
+      }
+    }
+    closeModal();
+    showToast('일정이 추가되었습니다');
+    viewDate = new Date(selectedDate);
+    switchPeriod('day');
+  }
+
+  // ---- 실행취소 가능한 토스트 (confirm() 대신 사용 — 카카오톡 인앱 브라우저 등에서 confirm이 안 뜨는 문제 회피) ----
+  let undoTimer;
+  let pendingUndo = null;
+  function showUndoToast(msg, undoFn){
+    const t = document.getElementById('toast');
+    t.innerHTML = `${msg} <span onclick="runUndo()" style="color:var(--gold-bright); text-decoration:underline; cursor:pointer; margin-left:8px; font-weight:600;">실행취소</span>`;
+    t.classList.add('show');
+    pendingUndo = undoFn;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => { t.classList.remove('show'); pendingUndo = null; }, 3000);
+  }
+  function runUndo(){
+    if(pendingUndo) pendingUndo();
+    document.getElementById('toast').classList.remove('show');
+    pendingUndo = null;
+  }
+
+  async function deleteEvent(key, idx){
+    const list = eventsData[currentScope][key];
+    if(!list) return;
+    const removed = list[idx];
+    list.splice(idx, 1);
+    if(list.length === 0) delete eventsData[currentScope][key];
+    render();
+
+    const { error } = await supabaseClient.from('events').delete().eq('id', removed.id);
+    if(error){ showToast('삭제 중 오류가 발생했어요'); }
+
+    showUndoToast('일정이 삭제되었습니다', async () => {
+      const { data, error: insErr } = await supabaseClient.from('events').insert({
+        user_id: supabaseUserId, scope: currentScope, event_date: key, event_time: removed.time, title: removed.title, sub: removed.sub, starred: removed.starred
+      }).select().single();
+      if(insErr){ showToast('복구에 실패했어요'); return; }
+      removed.id = data.id; // 삭제된 원래 id는 더 이상 유효하지 않으므로 새로 생성된 id로 교체
+      if(!eventsData[currentScope][key]) eventsData[currentScope][key] = [];
+      eventsData[currentScope][key].splice(idx, 0, removed);
+      eventsData[currentScope][key].sort((a,b) => a.time.localeCompare(b.time));
+      render();
+    });
+  }
+
+  // 일정 중요 표시(별표) 토글 — 보관함에 모아볼 수 있도록 함
+  async function toggleEventStar(key, idx){
+    const item = (eventsData[currentScope][key] || [])[idx];
+    if(!item) return;
+    item.starred = !item.starred;
+    render();
+    const { error } = await supabaseClient.from('events').update({ starred: item.starred }).eq('id', item.id);
+    if(error){ showToast('저장에 실패했어요'); return; }
+    showToast(item.starred ? '보관함에 추가했습니다' : '보관함에서 제외했습니다');
+  }
+
+  // ---- 캘린더 뷰 ----
+  function switchPeriod(period){
+    currentPeriod = period;
+    document.querySelectorAll('.period-tab').forEach(t => t.classList.toggle('active', t.dataset.period === period));
+    render();
+  }
+
+  function shiftPeriod(dir){
+    if(currentPeriod === 'day') viewDate.setDate(viewDate.getDate() + dir);
+    else if(currentPeriod === 'week') viewDate.setDate(viewDate.getDate() + dir*7);
+    else if(currentPeriod === 'month') viewDate.setMonth(viewDate.getMonth() + dir);
+    else if(currentPeriod === 'year') viewDate.setFullYear(viewDate.getFullYear() + dir);
+    render();
+  }
+
+  function renderDay(){
+    const key = dateKey(viewDate);
+    const data = eventsData[currentScope][key] || [];
+    document.getElementById('periodLabel').textContent = `${viewDate.getMonth()+1}월 ${viewDate.getDate()}일 (${weekLabels[viewDate.getDay()]})`;
+
+    const eventsHtml = data.length ? data.map((item, idx) => `
+      <div class="schedule-item">
+        <div class="sch-time">${item.time}</div>
+        <div class="sch-body" data-event-title="${escapeAttr(item.title)}" onclick="handleEventCardClick(event)" style="cursor:pointer;">
+          ${item.avatar ? `<div class="avatar">${item.avatar}</div>` : ''}
+          <div><div class="sch-title">${item.title}</div><div class="sch-sub">${item.sub}</div></div>
+          <div class="card-actions">
+            <button class="sch-star ${item.starred ? 'starred' : ''}" onclick="event.stopPropagation(); toggleEventStar('${key}',${idx})" aria-label="일정 중요 표시">${item.starred ? '★' : '☆'}</button>
+            <button class="sch-copy" onclick="event.stopPropagation(); copyEventText('${key}',${idx})" aria-label="일정 복사">복사</button>
+            <button class="sch-delete" onclick="event.stopPropagation(); deleteEvent('${key}',${idx})" aria-label="일정 삭제">✕</button>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:24px 0;">이 날은 등록된 일정이 없습니다.</div>';
+
+    const dayMemos = memosData[currentScope][key] || [];
+    const memosHtml = dayMemos.length
+      ? `<div class="section-label" style="margin-top:24px;">이 날의 메모</div>` + dayMemos.map(m => memoCardHtml(key, m)).join('')
+      : '';
+
+    const copyAllBtn = (data.length || dayMemos.length)
+      ? `<div style="display:flex; justify-content:flex-end; margin-bottom:12px;"><div class="memo-all-toggle" onclick="copyAllDayText()">이 날 전체 복사</div></div>`
+      : '';
+
+    return copyAllBtn + eventsHtml + memosHtml;
+  }
+
+  // 하루치 일정+메모를 한 번에 복사 — 일정 밑에 그 일정과 연결된(제목이 같은) 메모를 순서대로 붙여서 정리
+  // 특정 날짜(key)의 일정+메모를 정리한 줄 배열을 만들어줌 (일/주/월/년 복사가 공통으로 재사용)
+  function buildDayLines(key){
+    const events = eventsData[currentScope][key] || [];
+    const memos = memosData[currentScope][key] || [];
+    if(!events.length && !memos.length) return null;
+
+    const usedMemoIds = new Set();
+    let lines = [];
+    events.forEach(ev => {
+      lines.push(`[일정] ${ev.time} ${ev.title}`);
+      if(ev.sub && ev.sub !== '메모 없음') lines.push(ev.sub);
+      const matched = memos.filter(mm => mm.title === ev.title && !usedMemoIds.has(mm.id));
+      matched.forEach(mm => {
+        usedMemoIds.add(mm.id);
+        lines.push(`  ㄴ[메모] ${mm.content ? mm.content : '(내용 없음)'}`);
+      });
+    });
+    const remaining = memos.filter(mm => !usedMemoIds.has(mm.id));
+    if(remaining.length){
+      lines.push('[그 외 메모]');
+      remaining.forEach(mm => lines.push(`- ${mm.title}${mm.content ? ': ' + mm.content : ''}`));
+    }
+    return lines;
+  }
+
+  function copyAllDayText(){
+    const key = dateKey(viewDate);
+    const dayLines = buildDayLines(key);
+    if(!dayLines){ showToast('복사할 내용이 없습니다'); return; }
+    const [y,m,d] = key.split('-');
+    const header = `${y}.${m}.${d} (${weekLabels[viewDate.getDay()]}) 일정 · 메모`;
+    copyTextToClipboard([header, '', ...dayLines].join('\n').trim());
+  }
+
+  function copyAllWeekText(){
+    const start = startOfWeek(viewDate);
+    let blocks = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      const key = dateKey(d);
+      const dayLines = buildDayLines(key);
+      if(dayLines){
+        const [y,m,dd] = key.split('-');
+        blocks.push(`--- ${parseInt(m)}월 ${parseInt(dd)}일 (${weekLabels[d.getDay()]}) ---`, ...dayLines, '');
+      }
+    }
+    if(!blocks.length){ showToast('복사할 내용이 없습니다'); return; }
+    const header = `${start.getFullYear()}년 ${start.getMonth()+1}월 ${start.getDate()}일 주 일정 · 메모`;
+    copyTextToClipboard([header, '', ...blocks].join('\n').trim());
+  }
+
+  function copyAllMonthText(){
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    let blocks = [];
+    for(let d=1; d<=daysInMonth; d++){
+      const dt = new Date(y,m,d);
+      const key = dateKey(dt);
+      const dayLines = buildDayLines(key);
+      if(dayLines){
+        blocks.push(`--- ${m+1}월 ${d}일 (${weekLabels[dt.getDay()]}) ---`, ...dayLines, '');
+      }
+    }
+    if(!blocks.length){ showToast('복사할 내용이 없습니다'); return; }
+    const header = `${y}년 ${m+1}월 일정 · 메모`;
+    copyTextToClipboard([header, '', ...blocks].join('\n').trim());
+  }
+
+  function copyAllYearText(){
+    const y = viewDate.getFullYear();
+    const keys = [...new Set([
+      ...Object.keys(eventsData[currentScope]),
+      ...Object.keys(memosData[currentScope])
+    ])].filter(k => k.startsWith(`${y}-`)).sort();
+    let blocks = [];
+    keys.forEach(key => {
+      const dayLines = buildDayLines(key);
+      if(dayLines){
+        const [yy,mm,dd] = key.split('-');
+        const dt = new Date(parseInt(yy), parseInt(mm)-1, parseInt(dd));
+        blocks.push(`--- ${parseInt(mm)}월 ${parseInt(dd)}일 (${weekLabels[dt.getDay()]}) ---`, ...dayLines, '');
+      }
+    });
+    if(!blocks.length){ showToast('복사할 내용이 없습니다'); return; }
+    const header = `${y}년 일정 · 메모`;
+    copyTextToClipboard([header, '', ...blocks].join('\n').trim());
+  }
+
+
+  function renderWeek(){
+    const start = startOfWeek(viewDate);
+    document.getElementById('periodLabel').textContent = `${start.getMonth()+1}월 ${start.getDate()}일 주`;
+    let hasContent = false;
+    let html = '<div class="week-grid">';
+    for(let i=0;i<7;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      const key = dateKey(d);
+      const isToday = key === dateKey(today);
+      const dayEvents = eventsData[currentScope][key] || [];
+      const dayMemos = memosData[currentScope][key] || [];
+      if(dayEvents.length || dayMemos.length) hasContent = true;
+      html += `<div class="week-col" onclick="jumpToDay(${d.getFullYear()},${d.getMonth()},${d.getDate()})">
+        <div class="week-col-head ${isToday ? 'today' : ''}">${weekLabels[i]}<br>${d.getDate()}</div>
+        ${dayEvents.map(e => `<div class="week-chip ${isToday ? 'gold' : ''}">${e.title.length > 5 ? e.title.slice(0,5)+'…' : e.title}</div>`).join('') || '<div class="week-chip" style="opacity:0.3;">-</div>'}
+      </div>`;
+    }
+    html += '</div>';
+    const copyBtn = hasContent ? `<div style="display:flex; justify-content:flex-end; margin-bottom:12px;"><div class="memo-all-toggle" onclick="copyAllWeekText()">이 주 전체 복사</div></div>` : '';
+    return copyBtn + html;
+  }
+
+  function renderMonth(){
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    document.getElementById('periodLabel').textContent = `${y}년 ${m+1}월`;
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    let hasContent = false;
+    let html = '<div class="month-grid">';
+    weekLabels.forEach(l => html += `<div class="month-dow">${l}</div>`);
+    for(let i=0;i<firstDow;i++) html += `<div class="month-cell blank">·</div>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const cellDate = new Date(y, m, d);
+      const key = dateKey(cellDate);
+      const isToday = key === dateKey(today);
+      const isSelected = key === dateKey(viewDate) && !isToday;
+      const dayEvents = eventsData[currentScope][key] || [];
+      const dayMemos = memosData[currentScope][key] || [];
+      if(dayEvents.length || dayMemos.length) hasContent = true;
+      const shown = dayEvents.slice(0, 2).map(ev => `<div class="month-cell-event">${ev.title}</div>`).join('');
+      const more = dayEvents.length > 2 ? `<div class="month-cell-more">+${dayEvents.length - 2}개</div>` : '';
+      html += `<div class="month-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectMonthDate(${y},${m},${d})">
+        <div class="month-cell-num">${d}</div>${shown}${more}
+      </div>`;
+    }
+    html += '</div>';
+    const copyBtn = hasContent ? `<div style="display:flex; justify-content:flex-end; margin-bottom:12px;"><div class="memo-all-toggle" onclick="copyAllMonthText()">이 달 전체 복사</div></div>` : '';
+    return copyBtn + html;
+  }
+
+  function selectMonthDate(y,m,d){
+    viewDate = new Date(y,m,d);
+    render();
+  }
+
+  function goToToday(){
+    viewDate = new Date(today);
+    render();
+  }
+
+  function jumpToDay(y,m,d){
+    viewDate = new Date(y,m,d);
+    switchPeriod('day');
+  }
+
+  function renderYear(){
+    const y = viewDate.getFullYear();
+    document.getElementById('periodLabel').textContent = `${y}년`;
+    const hasContent = Object.keys(eventsData[currentScope]).some(k => k.startsWith(`${y}-`))
+      || Object.keys(memosData[currentScope]).some(k => k.startsWith(`${y}-`));
+    let html = '<div class="year-grid">';
+    for(let m=0; m<12; m++){
+      const isCurrent = (y === today.getFullYear() && m === today.getMonth());
+      const count = Object.keys(eventsData[currentScope]).filter(k => k.startsWith(`${y}-${pad(m+1)}`)).length;
+      const pct = Math.min(count * 25, 100);
+      html += `<div class="year-month ${isCurrent ? 'current' : ''}" onclick="jumpToMonth(${m})">
+        <div class="year-month-label">${m+1}월</div>
+        <div class="year-bar-track"><div class="year-bar-fill" style="width:${pct}%;"></div></div>
+        <div class="year-month-count">${count}건</div>
+      </div>`;
+    }
+    html += '</div>';
+    const copyBtn = hasContent ? `<div style="display:flex; justify-content:flex-end; margin-bottom:12px;"><div class="memo-all-toggle" onclick="copyAllYearText()">이 해 전체 복사</div></div>` : '';
+    return copyBtn + html;
+  }
+
+  function jumpToMonth(m){
+    viewDate.setMonth(m);
+    switchPeriod('month');
+  }
+
+  function render(){
+    const el = document.getElementById('periodContent');
+    if(currentPeriod === 'day') el.innerHTML = renderDay();
+    else if(currentPeriod === 'week') el.innerHTML = renderWeek();
+    else if(currentPeriod === 'month') el.innerHTML = renderMonth();
+    else if(currentPeriod === 'year') el.innerHTML = renderYear();
+    renderMemoContent();
+    const archiveEl = document.getElementById('archiveContent');
+    if(archiveEl) archiveEl.innerHTML = renderArchive();
+  }
+
+  // ---- 하단 탭 (일정 / 메모 / 보관함) ----
+  let mainTab = 'schedule';
+
+  function switchMainTab(tab){
+    mainTab = tab;
+    document.getElementById('mainTab-schedule').classList.toggle('active', tab === 'schedule');
+    document.getElementById('mainTab-memo').classList.toggle('active', tab === 'memo');
+    document.getElementById('mainTab-archive').classList.toggle('active', tab === 'archive');
+    document.getElementById('scheduleView').style.display = tab === 'schedule' ? 'block' : 'none';
+    document.getElementById('memoView').style.display = tab === 'memo' ? 'block' : 'none';
+    document.getElementById('archiveView').style.display = tab === 'archive' ? 'block' : 'none';
+    memoAllMode = false;
+    document.getElementById('memoAllToggle').textContent = '전체 메모 보기';
+    document.getElementById('memoCopyAllBtn').style.display = 'none';
+    document.getElementById('periodTabsRow').style.display = tab === 'archive' ? 'none' : 'flex';
+    document.getElementById('periodNav').style.display = tab === 'archive' ? 'none' : 'flex';
+    const fab = document.getElementById('fabBtn');
+    if(tab === 'archive'){
+      fab.style.display = 'none';
+    }else{
+      fab.style.display = 'flex';
+      fab.innerHTML = tab === 'schedule' ? '<i class="ti ti-plus"></i> 등록' : '<i class="ti ti-plus"></i> 메모 추가';
+    }
+    renderMemoContent();
+    if(tab === 'archive') document.getElementById('archiveContent').innerHTML = renderArchive();
+  }
+
+  function handleFabClick(){
+    if(mainTab === 'schedule') openModal();
+    else openMemoModal();
+  }
+
+  // ---- 메모 CRUD (날짜 기반, 일정과 동일한 viewDate 사용 → 자동 연동) ----
+  let editingMemo = null; // 수정 중인 메모 { key, id } — null이면 '새 메모 추가' 모드
+
+  function openMemoModal(){
+    editingMemo = null;
+    document.getElementById('memoModalTitle').textContent = '메모 추가';
+    document.getElementById('memoTitleInput').value = '';
+    document.getElementById('memoContentInput').value = '';
+    document.getElementById('memoModalOverlay').classList.add('open');
+  }
+  function handleEventCardClick(e){
+    const title = e.currentTarget.dataset.eventTitle || '';
+    openMemoForEvent(title);
+  }
+  function openMemoForEvent(eventTitle){
+    editingMemo = null;
+    document.getElementById('memoModalTitle').textContent = '메모 추가';
+    document.getElementById('memoTitleInput').value = eventTitle;
+    document.getElementById('memoContentInput').value = '';
+    document.getElementById('memoModalOverlay').classList.add('open');
+    document.getElementById('memoContentInput').focus();
+  }
+  // 기존 메모 카드를 눌렀을 때 — 내용을 불러와서 그 자리에서 수정할 수 있도록 함
+  function openMemoForEdit(key, id){
+    const list = memosData[currentScope][key];
+    if(!list) return;
+    const m = list.find(mm => mm.id === id);
+    if(!m) return;
+    editingMemo = { key, id };
+    document.getElementById('memoModalTitle').textContent = '메모 수정';
+    document.getElementById('memoTitleInput').value = m.title;
+    document.getElementById('memoContentInput').value = m.content || '';
+    document.getElementById('memoModalOverlay').classList.add('open');
+  }
+  function closeMemoModal(){
+    editingMemo = null;
+    document.getElementById('memoModalOverlay').classList.remove('open');
+  }
+
+  async function submitMemo(){
+    const title = document.getElementById('memoTitleInput').value.trim();
+    const content = document.getElementById('memoContentInput').value.trim();
+    if(!title){ showToast('제목을 입력해주세요'); return; }
+
+    if(editingMemo){
+      // 수정 모드: 기존 메모 항목의 제목/내용만 갱신 (날짜·순서는 그대로 유지)
+      const { key, id } = editingMemo;
+      const { error } = await supabaseClient.from('memos').update({ title, content }).eq('id', id);
+      if(error){ showToast('메모 수정에 실패했어요'); return; }
+      const list = memosData[currentScope][key];
+      const m = list && list.find(mm => mm.id === id);
+      if(m){
+        m.title = title;
+        m.content = content;
+      }
+      editingMemo = null;
+      closeMemoModal();
+      showToast('메모가 수정되었습니다');
+      render();
+      return;
+    }
+
+    const key = dateKey(viewDate);
+    const { data, error } = await supabaseClient.from('memos').insert({
+      user_id: supabaseUserId, scope: currentScope, event_date: key, title, content, starred: false
+    }).select().single();
+    if(error){ showToast('메모 저장에 실패했어요'); return; }
+    if(!memosData[currentScope][key]) memosData[currentScope][key] = [];
+    memosData[currentScope][key].unshift({ id: data.id, title, content, starred: false });
+    closeMemoModal();
+    showToast('메모가 저장되었습니다');
+    render();
+  }
+
+  async function deleteMemo(key, id){
+    const list = memosData[currentScope][key];
+    if(!list) return;
+    const idx = list.findIndex(m => m.id === id);
+    if(idx === -1) return;
+    const removed = list[idx];
+    memosData[currentScope][key] = list.filter(m => m.id !== id);
+    if(memosData[currentScope][key].length === 0) delete memosData[currentScope][key];
+    render();
+
+    const { error } = await supabaseClient.from('memos').delete().eq('id', id);
+    if(error){ showToast('삭제 중 오류가 발생했어요'); }
+
+    showUndoToast('메모가 삭제되었습니다', async () => {
+      const { data, error: insErr } = await supabaseClient.from('memos').insert({
+        user_id: supabaseUserId, scope: currentScope, event_date: key, title: removed.title, content: removed.content, starred: removed.starred
+      }).select().single();
+      if(insErr){ showToast('복구에 실패했어요'); return; }
+      removed.id = data.id;
+      if(!memosData[currentScope][key]) memosData[currentScope][key] = [];
+      memosData[currentScope][key].splice(idx, 0, removed);
+      render();
+    });
+  }
+
+  // 메모 중요 표시(별표) 토글 — 보관함에 모아볼 수 있도록 함
+  async function toggleMemoStar(key, id){
+    const list = memosData[currentScope][key];
+    const m = list && list.find(mm => mm.id === id);
+    if(!m) return;
+    m.starred = !m.starred;
+    render();
+    const { error } = await supabaseClient.from('memos').update({ starred: m.starred }).eq('id', id);
+    if(error){ showToast('저장에 실패했어요'); return; }
+    showToast(m.starred ? '보관함에 추가했습니다' : '보관함에서 제외했습니다');
+  }
+
+  function memoCardHtml(key, m){
+    return `
+      <div class="memo-card" onclick="openMemoForEdit('${key}',${m.id})" style="cursor:pointer;">
+        <div class="memo-card-top">
+          <div class="memo-card-title">${m.title}</div>
+          <div class="card-actions">
+            <button class="sch-star ${m.starred ? 'starred' : ''}" onclick="event.stopPropagation(); toggleMemoStar('${key}',${m.id})" aria-label="메모 중요 표시">${m.starred ? '★' : '☆'}</button>
+            <button class="sch-copy" onclick="event.stopPropagation(); copyMemoText('${key}',${m.id})" aria-label="메모 복사">복사</button>
+            <button class="sch-delete" onclick="event.stopPropagation(); deleteMemo('${key}',${m.id})" aria-label="메모 삭제">✕</button>
+          </div>
+        </div>
+        ${m.content ? `<div class="memo-card-content">${m.content}</div>` : `<div class="memo-card-content" style="color:var(--text-muted);">내용 없음 · 눌러서 추가</div>`}
+      </div>
+    `;
+  }
+
+  function renderMemoDay(){
+    const key = dateKey(viewDate);
+    const list = memosData[currentScope][key] || [];
+    if(!list.length) return '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:24px 0;">이 날은 작성된 메모가 없습니다.</div>';
+    return list.map(m => memoCardHtml(key, m)).join('');
+  }
+
+  function renderMemoWeek(){
+    const start = startOfWeek(viewDate);
+    let html = '<div class="week-grid">';
+    for(let i=0;i<7;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      const key = dateKey(d);
+      const isToday = key === dateKey(today);
+      const dayMemos = memosData[currentScope][key] || [];
+      html += `<div class="week-col" onclick="jumpToDay(${d.getFullYear()},${d.getMonth()},${d.getDate()})">
+        <div class="week-col-head ${isToday ? 'today' : ''}">${weekLabels[i]}<br>${d.getDate()}</div>
+        ${dayMemos.map(m => `<div class="week-chip ${isToday ? 'gold' : ''}">${m.title.length > 5 ? m.title.slice(0,5)+'…' : m.title}</div>`).join('') || '<div class="week-chip" style="opacity:0.3;">-</div>'}
+      </div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderMemoMonth(){
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    let html = '<div class="month-grid">';
+    weekLabels.forEach(l => html += `<div class="month-dow">${l}</div>`);
+    for(let i=0;i<firstDow;i++) html += `<div class="month-cell blank">·</div>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const cellDate = new Date(y, m, d);
+      const key = dateKey(cellDate);
+      const isToday = key === dateKey(today);
+      const isSelected = key === dateKey(viewDate) && !isToday;
+      const dayMemos = memosData[currentScope][key] || [];
+      const shown = dayMemos.slice(0, 2).map(mm => `<div class="month-cell-event">${mm.title}</div>`).join('');
+      const more = dayMemos.length > 2 ? `<div class="month-cell-more">+${dayMemos.length - 2}개</div>` : '';
+      html += `<div class="month-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectMonthDate(${y},${m},${d})">
+        <div class="month-cell-num">${d}</div>${shown}${more}
+      </div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderMemoYear(){
+    const y = viewDate.getFullYear();
+    let html = '<div class="year-grid">';
+    for(let m=0; m<12; m++){
+      const isCurrent = (y === today.getFullYear() && m === today.getMonth());
+      const count = Object.keys(memosData[currentScope]).filter(k => k.startsWith(`${y}-${pad(m+1)}`))
+        .reduce((sum,k) => sum + memosData[currentScope][k].length, 0);
+      const pct = Math.min(count * 25, 100);
+      html += `<div class="year-month ${isCurrent ? 'current' : ''}" onclick="jumpToMonth(${m})">
+        <div class="year-month-label">${m+1}월</div>
+        <div class="year-bar-track"><div class="year-bar-fill" style="width:${pct}%;"></div></div>
+        <div class="year-month-count">${count}건</div>
+      </div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderMemoContent(){
+    const el = document.getElementById('memoContent');
+    if(!el) return;
+    if(memoAllMode){ el.innerHTML = renderAllMemos(); return; }
+    if(currentPeriod === 'day') el.innerHTML = renderMemoDay();
+    else if(currentPeriod === 'week') el.innerHTML = renderMemoWeek();
+    else if(currentPeriod === 'month') el.innerHTML = renderMemoMonth();
+    else if(currentPeriod === 'year') el.innerHTML = renderMemoYear();
+  }
+
+  // ---- 전체 메모 보기 (날짜 상관없이 내가 쓴 메모 전부 최신순으로 정리) ----
+  let memoAllMode = false;
+
+  function toggleMemoAllView(){
+    memoAllMode = !memoAllMode;
+    const btn = document.getElementById('memoAllToggle');
+    btn.textContent = memoAllMode ? '달력으로 보기' : '전체 메모 보기';
+    document.getElementById('periodTabsRow').style.display = memoAllMode ? 'none' : 'flex';
+    document.getElementById('periodNav').style.display = memoAllMode ? 'none' : 'flex';
+    document.getElementById('memoCopyAllBtn').style.display = memoAllMode ? 'flex' : 'none';
+    renderMemoContent();
+  }
+
+  // 날짜 상관없이 지금까지 작성된 메모 전부를 최신순으로 정리해서 한 번에 복사
+  function copyAllMemosText(){
+    const scopeData = memosData[currentScope];
+    const keys = Object.keys(scopeData).sort().reverse();
+    if(!keys.length){ showToast('복사할 메모가 없습니다'); return; }
+    let lines = ['전체 메모', ''];
+    keys.forEach(key => {
+      const [y,m,d] = key.split('-');
+      scopeData[key].forEach(memo => {
+        lines.push(`[${y}.${m}.${d}] ${memo.title}`);
+        if(memo.content) lines.push(memo.content);
+        lines.push('');
+      });
+    });
+    copyTextToClipboard(lines.join('\n').trim());
+  }
+
+  function renderAllMemos(){
+    const scopeData = memosData[currentScope];
+    const keys = Object.keys(scopeData).sort().reverse(); // 최신 날짜 먼저
+    if(!keys.length) return '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:40px 0;">아직 작성된 메모가 없습니다.</div>';
+    return keys.map(key => {
+      const [y,m,d] = key.split('-');
+      const label = `${y}.${m}.${d}`;
+      return scopeData[key].map(memo => `
+        <div class="memo-card" onclick="openMemoForEdit('${key}',${memo.id})" style="cursor:pointer;">
+          <div class="memo-date-badge">${label}</div>
+          <div class="memo-card-top">
+            <div class="memo-card-title">${memo.title}</div>
+            <div class="card-actions">
+              <button class="sch-star ${memo.starred ? 'starred' : ''}" onclick="event.stopPropagation(); toggleMemoStar('${key}',${memo.id})" aria-label="메모 중요 표시">${memo.starred ? '★' : '☆'}</button>
+              <button class="sch-copy" onclick="event.stopPropagation(); copyMemoText('${key}',${memo.id})" aria-label="메모 복사">복사</button>
+              <button class="sch-delete" onclick="event.stopPropagation(); deleteMemo('${key}',${memo.id})" aria-label="메모 삭제">✕</button>
+            </div>
+          </div>
+          ${memo.content ? `<div class="memo-card-content">${memo.content}</div>` : `<div class="memo-card-content" style="color:var(--text-muted);">내용 없음 · 눌러서 추가</div>`}
+        </div>
+      `).join('');
+    }).join('');
+  }
+
+  // ---- 보관함 (별표 표시한 일정+메모를 한곳에 모아보기) ----
+  function collectStarredItems(){
+    let items = [];
+    const events = eventsData[currentScope];
+    Object.keys(events).forEach(key => {
+      events[key].forEach((ev, idx) => {
+        if(ev.starred) items.push({ type:'event', key, idx, time: ev.time, title: ev.title, sub: ev.sub });
+      });
+    });
+    const memos = memosData[currentScope];
+    Object.keys(memos).forEach(key => {
+      memos[key].forEach(m => {
+        if(m.starred) items.push({ type:'memo', key, id: m.id, title: m.title, content: m.content });
+      });
+    });
+    items.sort((a,b) => b.key.localeCompare(a.key)); // 최신 날짜 먼저
+    return items;
+  }
+
+  function renderArchive(){
+    const items = collectStarredItems();
+    if(!items.length){
+      return '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:40px 0; line-height:1.7;">아직 별표 표시한 항목이 없습니다.<br>일정이나 메모의 ☆를 눌러 중요한 내용을 보관함에 모아보세요.</div>';
+    }
+    const copyAllBtn = `<div style="display:flex; justify-content:flex-end; margin-bottom:12px;"><div class="memo-all-toggle" onclick="copyArchiveText()">보관함 전체 복사</div></div>`;
+    const cards = items.map(it => {
+      const [y,m,d] = it.key.split('-');
+      const dateLabel = `${y}.${m}.${d}`;
+      if(it.type === 'event'){
+        return `
+          <div class="memo-card">
+            <div class="memo-date-badge">${dateLabel} · 일정</div>
+            <div class="memo-card-top">
+              <div class="memo-card-title">${it.time} ${it.title}</div>
+              <div class="card-actions">
+                <button class="sch-star starred" onclick="toggleEventStar('${it.key}',${it.idx})" aria-label="별표 해제">★</button>
+                <button class="sch-copy" onclick="copyEventText('${it.key}',${it.idx})" aria-label="일정 복사">복사</button>
+              </div>
+            </div>
+            ${it.sub && it.sub !== '메모 없음' ? `<div class="memo-card-content">${it.sub}</div>` : ''}
+          </div>
+        `;
+      }
+      return `
+        <div class="memo-card">
+          <div class="memo-date-badge">${dateLabel} · 메모</div>
+          <div class="memo-card-top">
+            <div class="memo-card-title">${it.title}</div>
+            <div class="card-actions">
+              <button class="sch-star starred" onclick="toggleMemoStar('${it.key}',${it.id})" aria-label="별표 해제">★</button>
+              <button class="sch-copy" onclick="copyMemoText('${it.key}',${it.id})" aria-label="메모 복사">복사</button>
+            </div>
+          </div>
+          ${it.content ? `<div class="memo-card-content">${it.content}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+    return copyAllBtn + cards;
+  }
+
+  function copyArchiveText(){
+    const items = collectStarredItems();
+    if(!items.length){ showToast('복사할 항목이 없습니다'); return; }
+    let lines = ['보관함 (중요 표시)', ''];
+    items.forEach(it => {
+      const [y,m,d] = it.key.split('-');
+      if(it.type === 'event'){
+        lines.push(`[일정 · ${y}.${m}.${d} ${it.time}] ${it.title}`);
+        if(it.sub && it.sub !== '메모 없음') lines.push(it.sub);
+      }else{
+        lines.push(`[메모 · ${y}.${m}.${d}] ${it.title}`);
+        if(it.content) lines.push(it.content);
+      }
+      lines.push('');
+    });
+    copyTextToClipboard(lines.join('\n').trim());
+  }
+
+  applyStoredTheme();
+</script>
+
+</body>
+</html>
