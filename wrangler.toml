@@ -1,0 +1,9 @@
+name = "risknow"
+compatibility_date = "2026-08-01"
+pages_build_output_dir = "dist"
+
+# KV 네임스페이스는 아래 명령으로 먼저 생성한 뒤 id를 채워넣으세요:
+#   npx wrangler kv namespace create STATS_KV
+[[kv_namespaces]]
+binding = "STATS_KV"
+id = "여기에_생성된_KV_네임스페이스_ID_입력"
